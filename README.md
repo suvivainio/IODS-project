@@ -1,0 +1,4 @@
+
+This is the repository for the Introduction to Open Data Science course.
+
+We have created a great course diary that can be found here: <https://suvivainio.github.io/IODS-project/>
