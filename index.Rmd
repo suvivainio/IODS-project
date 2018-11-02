@@ -1,8 +1,11 @@
+```
+library('rmdformats)
+```
 ---
 title: "IODS course project"
 output:
   html_document:
-    theme: cosmo
+    theme: readthedown
     toc: true
     toc_depth: 2
     fig_caption: true
