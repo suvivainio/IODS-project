@@ -4,7 +4,7 @@ author: "Suvi Vainio"
 date: "17 marraskuuta 2018"
 output: html_document
 ---
-## Logistic regression
+# Logistic regression
 
 This week's exercise is to examine the relationships between high/low alcohol consumption and other variables of the data
 

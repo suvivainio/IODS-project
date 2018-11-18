@@ -128,15 +128,14 @@ $(document).ready(function () {
 </div>
 
 
-<div id="logistic-regression" class="section level2">
-<h2>Logistic regression</h2>
+<div id="logistic-regression" class="section level1">
+<h1>Logistic regression</h1>
 <p>This week’s exercise is to examine the relationships between high/low alcohol consumption and other variables of the data</p>
 <p>The dataset is courtecy of:</p>
 <p>P. Cortez and A. Silva. Using Data Mining to Predict Secondary School Student Performance. In A. Brito and J. Teixeira Eds., Proceedings of 5th FUture BUsiness TEChnology Conference (FUBUTEC 2008) pp. 5-12, Porto, Portugal, April, 2008, EUROSIS, ISBN 978-9077381-39-7.</p>
 <p>For exact information about the contents of the variables see: <a href="https://archive.ics.uci.edu/ml/datasets/Student+Performance" class="uri">https://archive.ics.uci.edu/ml/datasets/Student+Performance</a></p>
 <p>The datasets is originally about student achivement in secondary education of two Portuguese schools. Dataset includes variables such as grades, demographic, social and school-related features.</p>
 <p>There are two datasets downloadable from the homepage, one regarding the performance in mathematics the other regarding the performance in Portuguese. For the purposes of this exercise the data sets were combined into one dataset. Calculated variables about alcohol use were added: - alc_use, average of self-assessed alcohol-use during workdays and weekends, 1 very low and 5 very high - boolean variable high use: high_use: true, if alc_use &gt; 2</p>
-</div>
 <div id="choosing-variables-for-the-analysis" class="section level2">
 <h2>Choosing variables for the analysis</h2>
 <p>There are plenty of hypotheses that could be tested with this data. Are students who spend a lot of time studying so busy that they don’t have the time to drink? Or maybe kids from large families sneak out to drink while their parents are busy looking after the other ciblings?</p>
@@ -309,6 +308,7 @@ table(high_use = alc$high_use, Bernoulli = alc$bernoulliPred)%&gt;%prop.table()<
 ## high_use          0          1
 ##    FALSE 0.50523560 0.19633508
 ##    TRUE  0.20418848 0.09424084</code></pre>
+</div>
 </div>
 
 
