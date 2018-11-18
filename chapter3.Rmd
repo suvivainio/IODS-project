@@ -1,0 +1,161 @@
+---
+title: "Chapter 3"
+author: "Suvi Vainio"
+date: "17 marraskuuta 2018"
+output: html_document
+---
+## Logistic regression
+
+This week's exercise is to examine the relationships between high/low alcohol consumption and other variables of the data
+
+The dataset is courtecy of:
+
+P. Cortez and A. Silva. Using Data Mining to Predict Secondary School Student Performance. In A. Brito and J. Teixeira Eds., Proceedings of 5th FUture BUsiness TEChnology Conference (FUBUTEC 2008) pp. 5-12, Porto, Portugal, April, 2008, EUROSIS, ISBN 978-9077381-39-7.
+
+For exact information about the contents of  the variables see: https://archive.ics.uci.edu/ml/datasets/Student+Performance
+
+The datasets is originally about student achivement in secondary education of two Portuguese schools. Dataset includes variables such as grades, demographic, social and school-related features.
+
+There are two datasets downloadable from the homepage, one regarding the performance in mathematics the other regarding the performance in Portuguese. For the purposes of this exercise the data sets were combined into one dataset. Calculated variables about alcohol use were added:
+- alc_use, average of self-assessed alcohol-use during workdays and weekends, 1 very low and 5 very high
+- boolean variable high use: high_use: true, if alc_use > 2
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+alc=read.table("data/alc.txt")
+library(dplyr)
+glimpse(alc)
+```
+
+## Choosing variables for the analysis
+
+There are plenty of hypotheses that could be tested with this data. Are students who spend a lot of time studying so busy that they don't have the time to drink? Or maybe kids from large families sneak out to drink while their parents are busy looking after the other ciblings?
+
+Before choosing the variables I want to see, that there is enough variation so that the analysis is meaningful.
+
+```{r echo=F}
+# alc is available
+
+# access the tidyverse libraries tidyr, dplyr, ggplot2
+library(tidyr); library(dplyr); library(ggplot2)
+# draw a bar plot of each variable
+testColumns=c("school", "sex", "age", "famsize", "Pstatus", "Medu", 
+              "Fedu", "traveltime", "studytime", "failures", "paid",
+              "activities", "nursery", "higher", "internet", "romantic",
+              "famrel", "freetime", "goout", "health", "absences",
+              "reason")
+gather(alc[testColumns]) %>% 
+  ggplot(aes(value)) + 
+  facet_wrap("key", scales = "free") +
+  geom_bar()
+
+```
+
+Based on the plots above I choose to examine the alcohol consumption's relationship to the pro-education characteristics of the pupil and his or her parents. The variables I choose for further analysis are:
+
+- mother's education (0: none, 1: primary education, 2: 5th to 9th grade, 3: secondary education, 4: higher education)
+
+- father's education (same as above)
+
+- study time (1: <2 hrs, 2: 2-5 hrs, 3: 5-10 hrs, 4: >10 hrs)
+
+- reason to choose a certain school (close to home, school reputation, course preference, other)
+
+Hypotheses are as follows: The higher the education of the parents the more emphasis they lay for school work and thus their kids drink less. The more time the pupil spends studying the more important it is for him or her to be succesfull at school and that is why they drink less. Finally, if the motivation for the choice of school is school reputation or course preference then I assume that school work is also considered important, and these youngsters would drinks less.
+
+The variable study time does not need to be recoded. However, before the analysis I want to recode the reason to choose a certain school into two categories: 1 choice of school was made on academic grounds and 2 choice of school was made on other grounds. Furthermore I there are only couple of observations in the category "none" for parents' education, so I combine the observations in the categories "none" and "primary education" into same category.
+
+## Description of the analysis variables
+Below are the summaries of the analysis variables.
+
+In the data set 30 % of the observations belong to the group where alcohol consumption is high.
+
+```{r pressure, echo=FALSE}
+library(plyr); library(dplyr)
+print("Alchol use is high (dependent variable): ")
+print(table(alc$high_use)%>% prop.table)
+
+alc$reason2cat = 0
+alc[alc$reason == 'course' | alc$reason == 'reputation', ]$reason2cat=1
+alc$reason2cat=as.factor(alc$reason2cat)
+alc$reason2cat=mapvalues(alc$reason2cat, from=c(0,1), to=c('academic', 'other'))
+
+print("Reason the choose this school: ")
+print(table(alc$high_use, alc$reason2cat)%>% prop.table(margin = 1))
+
+alc[alc$Medu==0, ]$Medu=1
+alc[alc$Fedu==0, ]$Fedu=1
+print("Mother's education: ")
+print("1 none or primary education (4th grade), 2 5th to 9th grade, 3 secondary education or 4 higher education")
+print(table(alc$high_use,alc$Medu)%>% prop.table(margin = 1))
+print("Father's education: ")
+print(table(alc$high_use,alc$Fedu)%>% prop.table(margin = 1))
+print("Time spent studying:  ")
+print("1 - <2 hours, 2 - 2 to 5 hours, 3 - 5 to 10 hours, or 4 - >10 hours")
+print(table(alc$high_use, alc$studytime)%>% prop.table(margin = 1))
+
+```
+
+The propensity tables do not look very promising, mother's and father's education seem to have no relatioship with high or low alcohol consumption. Same holds true for the reason to choose a certain school. The only hypothesis, that propensity tables support to some extent is the time spent on studying: students that report high alcohol consumption seem to spend less hours studying than their peers.
+
+## Analysis
+
+Analysis confirms the doubts that propensity tables hinted to: mother's and father's education doesn't have a statistically significant relationship with high alchol consumption.
+
+Contrary to the hypotesis that academic reasons to choose a certain school is linked to low alcohol consumption in the logistic regression model the opposite holds true: other than academic reasons to choose a certain school are connected to low alcohol consumption.
+
+The only hypothesis that gains support is that the students who spent more time studying have less often high alcohol consumption.
+
+```{r}
+model=glm(high_use ~ Medu+Fedu+reason2cat+studytime ,data = alc)
+print(summary(model))
+print("Odds ratios and their confidence intervals")
+odds=cbind(coef(model)%>%exp, confint(model)%>%exp)
+print(odds)
+
+```
+
+Only studytime and reason the choose the current school were statistically significant in the first model. But since the confidence interval of the reason variable almost includes 1 (upper CL=0.9954194), only study time variable is kept in the final model.
+
+```{R}
+model=glm(high_use ~ studytime ,data = alc)
+print(summary(model))
+print("Odds ratios and their confidence intervals")
+odds=cbind(coef(model)%>%exp, confint(model)%>%exp)
+print(odds)
+```
+
+
+## Predictive power of model
+
+As could be expected the model turned out to be suboptimal also in terms of predictive power. Only low alcohol consumption was predicted, not a single observation was predicted to the high alchol consumption category. This means that 30 % of the observations were misclassified (that is all of students that reported high alcohol consumption).
+
+```{r}
+probabilities <- predict(model, type = "response")
+alc <- mutate(alc, probability = probabilities)
+alc <- mutate(alc, prediction = probabilities > 0.5)
+table(high_use = alc$high_use, prediction = alc$prediction)
+
+```
+
+Some rows with depent variable and independent variable and the prediction:
+
+```{r}
+select(alc, studytime, high_use, probability, prediction) %>% tail(10)
+```
+
+To compare the result to simple simulation, I created a new variable using random variables from the bernoulli distribution with 0.3 success probability (the share of observation with high consumption). When simple bernoulli distribution is used, 49 % of the observations are misclassified compared to the 30 % using the actual model. The model did better than the random variable.
+
+All in all it can be concluded that this analysis finds no support to the hypothesis that pro-education characteristics operationalized as the education of the parents, reason to choose a particular school or time used studying would predict (high) alcohol consumption of the student.
+
+```{r message=FALSE}
+library(Rlab)
+set.seed(40)
+alc$bernoulliPred=rbern(dim(alc)[1], 0.3)
+table(high_use = alc$high_use, Bernoulli = alc$bernoulliPred)%>%prop.table()
+
+```
+
+
+
+
