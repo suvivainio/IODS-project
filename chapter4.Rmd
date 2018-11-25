@@ -1,0 +1,144 @@
+
+
+# Clustering and classification
+
+Boston dataset, that is used in this exercise, is available in the package MASS. Dataset has 506 rows and 14 variables The dataset has information on the factors that effect housing prices in the suburbs of Bosto, that is: crime rate, business, nature, pollution, average size of housing in the are and so on.
+
+```{r include=FALSE}
+library(MASS)
+library(scales)
+str(Boston)
+```
+
+Summary and graphical overview of the data is in the graph below.
+
+There are some clear and interesting linear (or polynomial) relationships in the data, for example houses that have more rooms [rm] tend to be more expensive in the median value [medv].
+
+Also houses tend be more expensive if the proportion of population in the lower status [lstat] is low. Interestingly the proportion of the population goes up as the pollution [nox] goes up but median value of the housing goes down with high pollution. 
+
+Boston in the 1970s was clearly not one of the towns where the inner city is the most expensive neighbourhood.
+
+```{r}
+print(summary(Boston))
+pairs(Boston, lower.panel = NULL, col=alpha('blue', 0.8), gap=0.1, pch='.')
+```
+
+Standardizing a variable means that the variable is scaled to have a mean of 0 and standard deviation of 1. Boston dataset contains only numerical variables, so every column can be standardized. Here is a summary of the data after it has been standardized. Now every variable is on the same scale and can be compared to other variables more easily.
+
+```{r echo=FALSE}
+bostonScaled=as.data.frame(scale(Boston))
+summary(bostonScaled)
+```
+
+## Building a categorized dependent variable
+
+For linear discriminant analysis the dependent variable need to be categorical. Below is first a histogram of the original continuous variable and then propensity table of the dependent variable when it is categorized according to quantile function.
+
+```{r echo=FALSE}
+library(dplyr)
+hist(bostonScaled$crim, nclass = 20, main="Histogram of crime rates variable", xlab="Crime rate")
+breaks0=quantile(bostonScaled$crim)
+crime <- cut(bostonScaled$crim, breaks = breaks0, include.lowest = TRUE,
+              label=c("low", "med_low", "med_high", "high"))
+print("Breaks are in points: ")
+print(breaks0)
+print("Crime as categorized variable (%): ")
+print(table(crime)%>%prop.table())
+bostonScaled$crim=crime
+bostonScaled <- dplyr::select(bostonScaled, -crim)
+bostonScaled$crim=crime
+index=sample(nrow(bostonScaled), size=0.8*nrow(bostonScaled))
+train=bostonScaled[index,]
+test=bostonScaled[-index,]
+#nrow(train); nrow(test)
+
+```
+
+## Linear discriminant analysis 
+
+The data is divided into train (80% of the rows) and test datasets. 
+
+Linear discriminanat analysis (LDA) is first fitted to the train dataset and the results are then tested with the second dataset. LDA assumes that each variable has the same variance and that variables are normally distributed (on condition of the classes). The former was achieved by standardizing the variables the latter is just assumed here.
+
+Summary of the fitted model and corresponding plot are shown below. The arrow that didn't fit into the plot corresponds to the variable indicating accessibility to radial highways [rad]. The length and the direction of the arrow indicates the impact of the variable - so here access to radial highways is strongly associated with higher crime rates.
+
+
+```{r echo=FALSE}
+bostonFit=lda(crim~., data=train)
+print(bostonFit)
+
+# the function for lda biplot arrows (from datacamp exercises)
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+classes <- as.numeric(train$crim)
+
+plot(bostonFit, dimen = 2,col = classes, pch = classes)
+lda.arrows(bostonFit, myscale = 3, color='black')
+
+
+plot(bostonFit, dimen = 3,col = classes, pch = classes)
+
+```
+
+Output of the model reveals that first discriminant is responsible for 95,7 % of the between group variance. The two other discriminant explain 3 % and 1 % of the between groups variance.
+
+And indeed the high crime rate group is clearly recognizable from the plots (above), where LD1 is on one of the axes. When LD2 and LD3 are plotted on the same plot, all categories are more mixed together and the groups are not as easily identidiable.
+
+When you look at the values, the heaviest load in LD1 is rad. 
+
+## Testing the model
+
+Test data dataset (20 % of the observations) was used to evaluate the model (frequencies and row percentages below). Class of high crime rates was predicted very well: 100 % of the observations were predicted correctly. Model did a reasonably good job with the category medium high crime rate since 65 % of the observations belonging to that group were predicted correctly. Same holds true for the category low crime rate where 70 % of the observations were predicted correctly.
+
+The category medium low was hard for this classifier: Of the observations 44 % percent were predicted to the correct category. However, alltogether almost 60 % of the observations belonging to the catogory medium low were predicted to the neighbouring categories - which cannot be called a good result.
+
+```{r}
+crimeTest=test$crim
+test <- dplyr::select(test, -crim)
+lda.pred <- predict(bostonFit, newdata = test)
+
+table(correct = crimeTest, predicted = lda.pred$class)
+
+# cross tabulate the results
+table(correct = crimeTest, predicted = lda.pred$class)%>%prop.table(1)*100
+
+
+```
+
+## K-means clustering
+
+Last task of the week is to fit k-means clustering to the standardized Boston dataset. Line plot below visualizes the clusters. Since there's a clear drop between 1 cluster and 2 clusters I decide to go the simple way: my choice of optimal number of clusters is 2.
+
+Of course you could go with three or even four might be interesting, but the drop in the sum of squares is not so great then.
+
+```{r echo=FALSE}
+library(ggplot2)
+set.seed(123)
+bostonScaled=as.data.frame(scale(Boston))
+
+# determine the number of clusters
+k_max <- 10
+
+# calculate the total within sum of squares
+twcss <- sapply(1:k_max, function(k){kmeans(bostonScaled, k)$tot.withinss})
+
+# visualize the results
+qplot(x = 1:k_max, y = twcss, geom = 'line') +
+  scale_x_continuous(breaks=c(1,2,3,4,5,6,7,8,9,10))
+
+
+# k-means clustering
+km <-kmeans(bostonScaled, centers = 2)
+
+# plot the Boston dataset with clusters
+pairs(bostonScaled, lower.panel = NULL, col=alpha(km$cluster, 0.9), gap=0.1, pch='.')
+
+```
+
