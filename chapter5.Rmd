@@ -4,27 +4,113 @@ author: "Suvi Vainio"
 date: "2 joulukuuta 2018"
 output: html_document
 ---
+# Dimensionality reduction techniques
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+The data for this week's exercise is the UN human development index data that was manipulated by the course assistants.
+
+Long names for the variables can be found in: https://raw.githubusercontent.com/TuomoNieminen/Helsinki-Open-Data-Science/master/datasets/human_meta.txt
+
+The data has a couple of linear relationships (for example between life-expectancy and expected years of schooling, or the women to men ratio in secondary education). There is also relationships that look more polynomial than linear in nature, for example maternal mortality ratio seems to have a 'curvy' relationship with many of the other variables, e.g. life-expectancy or expected years in schooling.
+
+There exist also large correlations in the data set (>0.5), which indicates that variables might be describing an underlying and unobserved dimension and thus dimensionality reduction makes sense here.
+
+I'm not quite happy for having some small countries that are very rich - have especially high GNI - by mere coincidence than having had progressive and innovative environment for their businesses. Thus I'll take the liberty of excluding Qatar from the analysis, since it is such an anomaly for a country. In terms of population you could also think about deleting some of next rich but very small countries, but I'll let them be.
+
+```{r echo=FALSE}
+library(GGally)
+library(ggplot2)
+library(stringr)
+library(corrplot)
+human=read.table("./data/human.txt", stringsAsFactors = FALSE)
+
+human$GNI=str_replace(human$GNI, pattern=",", replace ="")%>%as.numeric
+
+str(human)
+summary(human)
+GGally::ggpairs(human)
+cor(human)%>%corrplot::corrplot.mixed()
+
+GNIdata=human[c("GNI")]
+GNIdata$Country=row.names(GNIdata)
+GNIdata=GNIdata[order(GNIdata$GNI, decreasing = T),]
+
+ggplot(data=GNIdata[1:10,], aes(x=reorder(GNI,Country), y=GNI, order=GNI))+
+  geom_bar(stat="identity")+
+  scale_x_discrete(labels=GNIdata[1:10,][order(GNIdata[1:10,]$GNI),]$Country)+
+xlab("")+
+  theme(axis.text.x =
+                   element_text(size  = 10,
+                                angle = 45,
+                                hjust = 1,
+                                vjust = 1))
+
+human=human[rownames(human)!='Qatar',]
 ```
 
-## R Markdown
+## Principal component analysis
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+The first principal component analysis is performed on the non-standardized dataset. PCA is sensitive to scales and variances and in the data set the ranges vary a lot.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Indeed the unstandardized principle component analysis manages to differentiate between countries that are materially very well of (like Kuwait, Singapore, Norway and the USA). In this case using just GNI is simpler and this complex analysis does not add a lot of value. First component captures 100 % of the variance.
 
-```{r cars}
-summary(cars)
+```{r echo=FALSE}
+pca1=prcomp(human)
+pca1
+s1=summary(pca1)
+print(s1)
+pca1_pr <- round(100*s1$importance[2, ], digits = 1)
+labels1=paste0(names(pca1_pr), " (", pca1_pr, "%)")
+biplot(pca1, choices = 1:2, cex = c(0.5, 0.8), xlab=labels1[1], ylab=labels1[2])
 ```
 
-## Including Plots
+The second analysis is performed on the standardized dataset. This time there are 2 components, that capture 70 % of the variation, with first componen accounting 54 %.
 
-You can also embed plots, for example:
+Based on the correlations, the most important contributors for first component are expected years in education (-0.42), life-expectancy (-0.44), maternal mortality (0.43) and adolescent birth rate (0.40). You could also add GNI (-0.34) and women to men ratio in the secondary educaiton (-0.35). This could be seen as some kind of a material dimension for well-being.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+Second component consists of female to male ratio in the labour force (0.72) and percentage of female representatives in parliament (0.64). This dimension describes the equality of men and women in relation to power.
+
+```{r echo=FALSE}
+human1=scale(human)
+#summary(human1)
+pca2=prcomp(human1)
+pca2
+s1=summary(pca2)
+s1
+pca1_pr <- round(100*s1$importance[2, ], digits = 1)
+labels1=paste0(names(pca1_pr), " (", pca1_pr, "%)")
+biplot(pca1, choices = 1:2, cex = c(0.5, 0.8), xlab=labels1[1], ylab=labels1[2])
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Multiple correspondence analysis
+
+Below is a summary of the variables in the tea data set from package FactoMineR. Since there are too many variables and I don't have a theory about tea drinking at hand I'll just randomly select half of the variables for the analysis.
+
+```{r echo=F}
+library(FactoMineR)
+library(tidyr)
+library(dplyr)
+set.seed(42)
+data(tea)
+tea1=tea[sample(colnames(tea),36/2)]
+tea1=select(tea1, -age)
+str(tea); summary(tea)
+
+gather(tea1) %>% ggplot(aes(value)) + 
+  geom_bar() +
+  facet_wrap("key", scales = "free") 
+```
+
+Task is to fit a multiple correspondence analysis to the data. Results are below. Selecting the columns at random doesn't make much sense.
+
+```{r}
+mca <- MCA(tea1, graph = FALSE)
+summary(mca)
+plot(mca, invisible=c("ind"), habillage="quali", cex=0.8, selectMod="contrib 20", xlim=c(-2,2))
+```
+
+
+
+
+
+

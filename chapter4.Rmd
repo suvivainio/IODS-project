@@ -10,6 +10,7 @@ output: html_document
 Boston dataset, that is used in this exercise, is available in the package MASS. Dataset has 506 rows and 14 variables The dataset has information on the factors that effect housing prices in the suburbs of Bosto, that is: crime rate, business, nature, pollution, average size of housing in the are and so on.
 
 ```{r include=FALSE}
+rm(list = ls())
 library(MASS)
 library(scales)
 str(Boston)
@@ -144,6 +145,6 @@ km <-kmeans(bostonScaled, centers = 2)
 
 # plot the Boston dataset with clusters
 pairs(bostonScaled, lower.panel = NULL, col=alpha(km$cluster, 0.9), gap=0.1, pch='.')
-
+rm(list = ls())
 ```
 
